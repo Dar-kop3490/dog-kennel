@@ -1,0 +1,213 @@
+openapi: 3.1.0
+info:
+  title: sales-service
+  version: 1.0.0
+  description: |
+    Бронирование и продажа щенков. Управляет жизненным циклом брони
+    (PENDING_PAYMENT → CONFIRMED / CANCELLED / EXPIRED).
+    Публикует события puppy.reserved и puppy.expired.
+
+servers:
+  - url: /api/v1
+  - url: /internal/v1
+
+tags:
+  - name: public
+  - name: internal
+
+paths:
+  /reservations:
+    post:
+      tags: [public]
+      summary: Создать бронь щенка (удержание на 15 минут)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          description: UUID для защиты от повторов
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateReservationRequest' }
+            example:
+              puppyId: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+      responses:
+        '201':
+          description: Бронь создана, ожидает оплаты
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+              example:
+                id: "res-112233"
+                puppyId: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+                status: PENDING_PAYMENT
+                paymentUrl: "https://pay.example.com/checkout/abc"
+                expiresAt: "2026-11-21T15:00:00Z"
+        '409':
+          description: Щенок уже забронирован или продан
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '422':
+          description: Ошибка валидации
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+    get:
+      tags: [public]
+      summary: Список броней клиента
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Страница броней
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/Reservation' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+
+  /reservations/{id}:
+    get:
+      tags: [public]
+      summary: Детали брони
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Бронь
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Reservation' }
+        '404':
+          description: Не найдена
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /internal/reservations/{id}/status:
+    patch:
+      tags: [internal]
+      summary: Обновить статус брони по событию от payment-service
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, eventId]
+              properties:
+                status: { type: string, enum: [CONFIRMED, CANCELLED, EXPIRED] }
+                eventId: { type: string, format: uuid, description: Для идемпотентности }
+            example:
+              status: CONFIRMED
+              eventId: "evt-998877"
+      responses:
+        '200':
+          description: Статус обновлён
+        '404':
+          description: Бронь не найдена
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Недопустимый переход статуса
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    CreateReservationRequest:
+      type: object
+      required: [puppyId]
+      properties:
+        puppyId: { type: string, format: uuid }
+
+    Reservation:
+      type: object
+      required: [id, puppyId, status, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        puppyId: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING_PAYMENT, CONFIRMED, CANCELLED, EXPIRED]
+        paymentUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    # === Асинхронные события ===
+    PuppyReservedEvent:
+      description: |
+        **Топик:** `sales-events`
+        **Издатель:** sales-service
+        **Подписчики:** notification-service
+        **Ключ партиции:** reservationId
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [puppy.reserved] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          properties:
+            reservationId: { type: string, format: uuid }
+            puppyId: { type: string, format: uuid }
+            clientId: { type: string, format: uuid }
+            amount: { type: number, format: double }
+            currency: { type: string, example: RUB }
+
+    PuppyExpiredEvent:
+      description: |
+        **Топик:** `sales-events`
+        **Издатель:** sales-service
+        **Подписчики:** notification-service
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [puppy.expired] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          properties:
+            reservationId: { type: string, format: uuid }
+            puppyId: { type: string, format: uuid }
