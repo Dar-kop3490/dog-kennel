@@ -1,0 +1,163 @@
+openapi: 3.1.0
+info:
+  title: clinic-service
+  version: 1.0.0
+  description: |
+    Расписание ветеринаров и грумеров, запись на процедуры.
+    Работает со слотами времени.
+
+servers:
+  - url: /api/v1
+  - url: /internal/v1
+
+tags:
+  - name: public
+  - name: internal
+
+paths:
+  /appointments:
+    post:
+      tags: [public]
+      summary: Записаться на процедуру
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateAppointmentRequest' }
+            example:
+              serviceType: GROOMING
+              masterId: "master-001"
+              scheduledAt: "2026-11-25T14:00:00Z"
+              dogName: "Рекс"
+      responses:
+        '201':
+          description: Запись создана
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '409':
+          description: Слот уже занят
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+    get:
+      tags: [public]
+      summary: Список записей клиента
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Страница записей
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/Appointment' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+
+  /masters/{masterId}/slots:
+    get:
+      tags: [public]
+      summary: Свободные слоты мастера на дату
+      parameters:
+        - name: masterId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: date
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Список свободных слотов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                  format: date-time
+              example:
+                - "2026-11-25T10:00:00Z"
+                - "2026-11-25T11:00:00Z"
+
+  /internal/appointments/{id}/status:
+    patch:
+      tags: [internal]
+      summary: Обновить статус записи
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [CONFIRMED, CANCELLED, COMPLETED] }
+      responses:
+        '200':
+          description: Статус обновлён
+        '404':
+          description: Не найдена
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    CreateAppointmentRequest:
+      type: object
+      required: [serviceType, masterId, scheduledAt, dogName]
+      properties:
+        serviceType: { type: string, enum: [GROOMING, VACCINATION, CHECKUP, SURGERY] }
+        masterId: { type: string, format: uuid }
+        scheduledAt: { type: string, format: date-time }
+        dogName: { type: string }
+        notes: { type: string, maxLength: 500 }
+
+    Appointment:
+      type: object
+      required: [id, status]
+      properties:
+        id: { type: string, format: uuid }
+        serviceType: { type: string }
+        masterId: { type: string, format: uuid }
+        masterName: { type: string }
+        scheduledAt: { type: string, format: date-time }
+        dogName: { type: string }
+        status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED] }
+        price: { type: number, format: double }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
