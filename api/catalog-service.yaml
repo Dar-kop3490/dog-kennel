@@ -1,0 +1,182 @@
+openapi: 3.1.0
+info:
+  title: catalog-service
+  version: 1.0.0
+  description: |
+    Управление породами, помётами и профилями щенков.
+    Основной источник истины для каталога.
+    Читается в 100 раз чаще, чем оформляются продажи.
+
+servers:
+  - url: /api/v1
+    description: Публичный API (через Gateway)
+  - url: /internal/v1
+    description: Внутренний API (межсервисный)
+
+tags:
+  - name: public
+    description: Эндпоинты для клиента
+  - name: internal
+    description: Эндпоинты для других сервисов
+
+paths:
+  /puppies:
+    get:
+      tags: [public]
+      summary: Список доступных щенков с фильтрацией
+      parameters:
+        - name: breed
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { type: string, enum: [AVAILABLE, RESERVED, SOLD] }
+        - name: page
+          in: query
+          required: false
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: size
+          in: query
+          required: false
+          schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
+      responses:
+        '200':
+          description: Страница щенков
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PuppyPage' }
+              example:
+                content:
+                  - id: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+                    breed: "Корги"
+                    litterId: "lit-001"
+                    status: AVAILABLE
+                    price: 50000
+                    photoUrl: "https://minio.example.com/puppies/a1b2.jpg"
+                page: 0
+                size: 20
+                totalElements: 42
+                totalPages: 3
+        '400':
+          description: Некорректные параметры
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /puppies/{id}:
+    get:
+      tags: [public]
+      summary: Карточка щенка
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Щенок найден
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Puppy' }
+        '404':
+          description: Щенок не найден
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /internal/puppies/{id}:
+    get:
+      tags: [internal]
+      summary: Получить щенка для проверки статуса и цены (для sales-service)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Щенок
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PuppyInternal' }
+        '404':
+          description: Не найден
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /internal/puppies/{id}/status:
+    patch:
+      tags: [internal]
+      summary: Обновить статус щенка (AVAILABLE / RESERVED / SOLD)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [AVAILABLE, RESERVED, SOLD] }
+            example:
+              status: SOLD
+      responses:
+        '200':
+          description: Статус обновлён
+        '404':
+          description: Не найден
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+        '409':
+          description: Недопустимый переход статуса
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    Puppy:
+      type: object
+      required: [id, breed, litterId, status, price]
+      properties:
+        id: { type: string, format: uuid }
+        breed: { type: string }
+        litterId: { type: string, format: uuid }
+        birthDate: { type: string, format: date }
+        gender: { type: string, enum: [MALE, FEMALE] }
+        status: { type: string, enum: [AVAILABLE, RESERVED, SOLD] }
+        price: { type: number, format: double }
+        photoUrl: { type: string, format: uri }
+
+    PuppyInternal:
+      type: object
+      required: [id, status, price]
+      properties:
+        id: { type: string, format: uuid }
+        status: { type: string, enum: [AVAILABLE, RESERVED, SOLD] }
+        price: { type: number, format: double }
+
+    PuppyPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items: { $ref: '#/components/schemas/Puppy' }
+        page: { type: integer }
+        size: { type: integer }
+        totalElements: { type: integer }
+        totalPages: { type: integer }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri, example: "https://example.com/errors/not-found" }
+        title: { type: string, example: "Not Found" }
+        status: { type: integer, example: 404 }
+        detail: { type: string, example: "Puppy not found" }
