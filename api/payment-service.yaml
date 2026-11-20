@@ -1,0 +1,181 @@
+openapi: 3.1.0
+info:
+  title: payment-service
+  version: 1.0.0
+  description: |
+    Создание инвойсов, приём результатов от платёжного шлюза, возвраты.
+    Публикует события payment.completed и payment.failed.
+
+servers:
+  - url: /api/v1
+  - url: /internal/v1
+
+tags:
+  - name: public
+  - name: internal
+
+paths:
+  /payments/{id}:
+    get:
+      tags: [public]
+      summary: Статус платежа
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Платёж
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+        '404':
+          description: Не найден
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /internal/payments:
+    post:
+      tags: [internal]
+      summary: Создать инвойс (вызывается sales/hotel/clinic)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePaymentRequest' }
+            example:
+              amount: 50000.00
+              currency: RUB
+              description: "Бронь щенка #a1b2"
+              callbackUrl: "https://sales.internal/callbacks/payment"
+      responses:
+        '201':
+          description: Инвойс создан
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Payment' }
+              example:
+                id: "pay-998877"
+                status: PENDING
+                amount: 50000.00
+                currency: RUB
+                paymentUrl: "https://pay.example.com/checkout/abc"
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+  /internal/payments/{id}/refund:
+    post:
+      tags: [internal]
+      summary: Инициировать возврат (команда от sales/hotel)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, example: "Бронь истекла" }
+      responses:
+        '202':
+          description: Возврат принят в обработку
+        '404':
+          description: Платёж не найден
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    CreatePaymentRequest:
+      type: object
+      required: [amount, currency, description]
+      properties:
+        amount: { type: number, format: double, minimum: 0 }
+        currency: { type: string, example: RUB }
+        description: { type: string, maxLength: 200 }
+        callbackUrl: { type: string, format: uri }
+
+    Payment:
+      type: object
+      required: [id, status, amount, currency]
+      properties:
+        id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED, REFUNDED]
+        amount: { type: number, format: double }
+        currency: { type: string }
+        paymentUrl: { type: string, format: uri }
+        createdAt: { type: string, format: date-time }
+        completedAt: { type: string, format: date-time }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    # === События ===
+    PaymentCompletedEvent:
+      description: |
+        **Топик:** `payment-events`
+        **Издатель:** payment-service
+        **Подписчики:** sales-service, hotel-service
+        **Ключ партиции:** reservationId / bookingId (порядок событий по одной брони)
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [payment.completed] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          required: [paymentId, amount, currency]
+          properties:
+            paymentId: { type: string, format: uuid }
+            reservationId: { type: string, format: uuid }
+            bookingId: { type: string, format: uuid }
+            amount: { type: number, format: double }
+            currency: { type: string }
+
+    PaymentFailedEvent:
+      description: |
+        **Топик:** `payment-events`
+        **Издатель:** payment-service
+        **Подписчики:** sales-service, hotel-service
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [payment.failed] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          required: [paymentId, reason]
+          properties:
+            paymentId: { type: string, format: uuid }
+            reservationId: { type: string, format: uuid }
+            bookingId: { type: string, format: uuid }
+            reason:
+              type: string
+              enum: [insufficient_funds, card_declined, timeout, fraud]
