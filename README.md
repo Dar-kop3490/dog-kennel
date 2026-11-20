@@ -12,7 +12,7 @@
 
 1. Как _клиент_, я хочу просмотреть список доступных щенков определенного помета, чтобы выбрать питомца.
 2. Как _клиент_, я хочу забронировать щенка и внести депозит, чтобы закрепить его за собой.
-3. Как _клиент_, я хочу записаться на груминг для своей собаки, чтобы в удобное время оказали услугу 
+3. Как _клиент_, я хочу записаться на груминг для своей собаки, чтобы в удобное время оказали услугу
 4. Как _клиент_, я хочу получить SMS-подтверждение о том, что бронь щенка или гостиницы принята.
 5. Как _ветеринар_, я хочу посмотреть расписание приемов на сегодня, чтобы подготовиться к пациентам.
 6. Как _администратор_, я хочу добавить новый помет щенков в каталог с фотографиями и паспортами, чтобы выставить их на продажу.
@@ -53,23 +53,51 @@
 | **Keycloak**             | Gateway                                     | OAuth 2.0 / OpenID Connect. Избегаем написания собственной системы аутентификации.                                                                              |
 | **MinIO (S3)**           | catalog, clinic                             | Хранение фотографий щенков, пометов, ветеринарных паспортов и справок.                                                                                          |
 
+![Архитектурная схема](docs/architecture.png)  
+_(Исходник: [docs/architecture.drawio](docs/architecture.drawio))_
+
 ### Таблица взаимодействий
 
-| №   | Инициатор → получатель             | Тип   | Эндпоинт или событие                                      | Назначение                                       |
-| --- | ---------------------------------- | ----- | --------------------------------------------------------- | ------------------------------------------------ |
-| 1   | Клиент → catalog                   | sync  | `GET /api/v1/puppies`                                     | Получить список доступных щенков                 |
-| 2   | Клиент → sales                     | sync  | `POST /api/v1/reservations`                               | Создать бронь щенка                              |
-| 3   | Клиент → hotel-service             | sync  | `POST /api/v1/hotel-bookings`                             | Забронировать бокс для собаки на даты            |
-| 4   | Клиент → clinic                    | sync  | `POST /api/v1/appointments`                               | Записаться на груминг/вакцинацию                 |
-| 5   | sales → catalog                    | sync  | `GET /internal/v1/puppies/{id}`                           | Проверить статус щенка и цену                    |
-| 6   | sales → payment                    | sync  | `POST /internal/v1/payments`                              | Создать счета на оплату                          |
-| 7   | sales → notification               | async | Топик: `sales-events`  <br>Событие: `puppy.reserved`      | Отправить клиенту SMS                            |
-| 8   | hotel → payment                    | sync  | `REST: POST /internal/v1/payments`                        | Создать счет на оплату передержки                |
-| 9   | payment → hotel                    | async | Топик: `payment-events`  <br>Событие: `payment.failed`    | Отменить бронь бокса (компенсирующее действие)   |
-| 10  | payment → hotel                    | async | Топик: `payment-events`  <br>Событие: `payment.completed` | Подтвердить бронь бокса после оплаты             |
-| 11  | payment → sales                    | async | Топик :`payment-event` Cобытие:`payment.completed`        | Подтвердить бронь (перевести в статус CONFIRMED) |
-| 12  | payment → sales                    | async | Топик: `payment-event` Cобытие:`payment.failed`           | Отменить бронь (компенсирующее действие)         |
-| 13  | hotel → notification               | async | Топик: `hotel-events`  <br>Событие: `booking.confirmed`   | Уведомить клиента об успешном заселении          |
-| 14  | payment → Платёжный шлюз           | sync  | `HTTPS: Списание средств`                                 | Провести оплату по инвойсу                       |
-| 15  | notification → SMS/Email-провайдер | sync  | `HTTP: Отправка уведомления`                              | Доставить SMS/Email клиенту                      |
-| 16  | API Gateway → Keycloak             | sync  | `OIDC: Проверка JWT`                                      | Валидация токена клиента                         |
+| №   | Инициатор → получатель             | Тип   | Эндпоинт или событие                                     | Назначение                                       |
+| --- | ---------------------------------- | ----- | -------------------------------------------------------- | ------------------------------------------------ |
+| 1   | Клиент → catalog                   | sync  | `GET /api/v1/puppies`                                    | Получить список доступных щенков                 |
+| 2   | Клиент → sales                     | sync  | `POST /api/v1/reservations`                              | Создать бронь щенка                              |
+| 3   | Клиент → hotel-service             | sync  | `POST /api/v1/hotel-bookings`                            | Забронировать бокс для собаки на даты            |
+| 4   | Клиент → clinic                    | sync  | `POST /api/v1/appointments`                              | Записаться на груминг/вакцинацию                 |
+| 5   | sales → catalog                    | sync  | `GET /internal/v1/puppies/{id}`                          | Проверить статус щенка и цену                    |
+| 6   | sales → payment                    | sync  | `POST /internal/v1/payments`                             | Создать счета на оплату                          |
+| 7   | sales → notification               | async | Топик: `sales-events` <br>Событие: `puppy.reserved`      | Отправить клиенту SMS                            |
+| 8   | hotel → payment                    | sync  | `REST: POST /internal/v1/payments`                       | Создать счет на оплату передержки                |
+| 9   | payment → hotel                    | async | Топик: `payment-events` <br>Событие: `payment.failed`    | Отменить бронь бокса (компенсирующее действие)   |
+| 10  | payment → hotel                    | async | Топик: `payment-events` <br>Событие: `payment.completed` | Подтвердить бронь бокса после оплаты             |
+| 11  | payment → sales                    | async | Топик :`payment-event` Cобытие:`payment.completed`       | Подтвердить бронь (перевести в статус CONFIRMED) |
+| 12  | payment → sales                    | async | Топик: `payment-event` Cобытие:`payment.failed`          | Отменить бронь (компенсирующее действие)         |
+| 13  | hotel → notification               | async | Топик: `hotel-events` <br>Событие: `booking.confirmed`   | Уведомить клиента об успешном заселении          |
+| 14  | payment → Платёжный шлюз           | sync  | `HTTPS: Списание средств`                                | Провести оплату по инвойсу                       |
+| 15  | notification → SMS/Email-провайдер | sync  | `HTTP: Отправка уведомления`                             | Доставить SMS/Email клиенту                      |
+| 16  | API Gateway → Keycloak             | sync  | `OIDC: Проверка JWT`                                     | Валидация токена клиента                         |
+
+**Успешный путь:**
+![Успешный путь](docs/sequence-happy-way.png)
+
+**Сценарий со сбоем (Сага):**  
+Если оплата отклонена (`payment.failed`), `sales-service` получает событие и выполняет компенсирующие действия: переводит бронь в статус `CANCELLED` и синхронно вызывает `catalog-service` для возврата щенку статуса `AVAILABLE` (снятие резерва).
+![Сценарий со сбоем](docs/sequence-failed.png)
+
+Спецификации написаны для всех 6 сервисов в папке [`api/`](api/).  
+Каждый файл содержит:
+
+- Разделение на теги `public` (для клиента через Gateway) и `internal` (для межсервисного взаимодействия).
+- Единую модель ошибок `Problem`.
+- Заголовок `Idempotency-Key` для операций создания и изменения состояния.
+- Пагинацию (`page`/`size`) для всех списков.
+- Схемы асинхронных сообщений в разделе `components/schemas` с указанием топика, издателя, подписчиков и структуры (eventId, eventType, occurredAt, schemaVersion, payload).
+
+**Список файлов:**
+
+1. [`api/catalog-service.yaml`](api/catalog-service.yaml)
+2. [`api/sales-service.yaml`](api/sales-service.yaml)
+3. [`api/hotel-service.yaml`](api/hotel-service.yaml)
+4. [`api/clinic-service.yaml`](api/clinic-service.yaml)
+5. [`api/payment-service.yaml`](api/payment-service.yaml)
+6. [`api/notification-service.yaml`](api/notification-service.yaml)
