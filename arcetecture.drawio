@@ -1,0 +1,122 @@
+<mxfile host="app.diagrams.net" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:160.0) Gecko/20100101 Firefox/160.0">
+  <diagram name="Architecture" id="Dw1Hobl3hf73xObeFts4">
+    <mxGraphModel dx="-161" dy="-353" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="D87muBoemHgZMu7HMytx-146" parent="1" style="text;html=1;align=center;fontSize=14;fontStyle=1;" value="Клиент обращается только через Gateway. Оплата резервирует ресурсы событием." vertex="1">
+          <mxGeometry height="30" width="700" x="1940" y="1260" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-147" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Клиент: веб и мобильное" vertex="1">
+          <mxGeometry height="50" width="200" x="2140" y="1310" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-148" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" value="API Gateway" vertex="1">
+          <mxGeometry height="60" width="200" x="2140" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-149" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="Keycloak" vertex="1">
+          <mxGeometry height="50" width="160" x="2530" y="1400" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-150" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;catalog-service&lt;/b&gt;&lt;br&gt;породы, помёты, щенки&lt;br&gt;&lt;i&gt;PostgreSQL + Redis + MinIO&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="1690" y="1480" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-151" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;sales-service&lt;/b&gt;&lt;br&gt;бронь и продажа щенков&lt;br&gt;&lt;i&gt;PostgreSQL + Redis&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="1690" y="1630" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-152" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;hotel-service&lt;/b&gt;&lt;br&gt;боксы, заезды, передержка&lt;br&gt;&lt;i&gt;PostgreSQL + Redis&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="2530" y="1650" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-153" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;clinic-service&lt;/b&gt;&lt;br&gt;услуги, расписание, записи&lt;br&gt;&lt;i&gt;PostgreSQL&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="2550" y="1490" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-154" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;payment-service&lt;/b&gt;&lt;br&gt;транзакции, инвойсы, возвраты&lt;br&gt;&lt;i&gt;PostgreSQL&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="2130" y="1570" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-155" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" value="&lt;b&gt;Apache Kafka&lt;/b&gt;&lt;br&gt;брокер событий" vertex="1">
+          <mxGeometry height="60" width="220" x="2060" y="1920" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-156" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#666666;" value="&lt;b&gt;notification-service&lt;/b&gt;&lt;br&gt;SMS и Email клиентам&lt;br&gt;&lt;i&gt;MongoDB (история)&lt;/i&gt;" vertex="1">
+          <mxGeometry height="80" width="220" x="2060" y="2040" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-157" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;Платёжный шлюз&lt;/b&gt;&lt;br&gt;внешняя система" vertex="1">
+          <mxGeometry height="80" width="200" x="2250" y="1714" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-158" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="&lt;b&gt;SMS/Email-провайдер&lt;/b&gt;&lt;br&gt;внешняя система" vertex="1">
+          <mxGeometry height="80" width="200" x="2450" y="2040" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-159" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-147" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-148" value="HTTPS">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-160" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-148" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-149" value="OIDC: Проверка JWT">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-161" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-148" style="endArrow=classic;html=1;exitX=0.1;exitY=1;entryX=0.5;entryY=0;" target="D87muBoemHgZMu7HMytx-150" value="&lt;i&gt;каталог щенков&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-162" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-148" style="endArrow=classic;html=1;exitX=0.35;exitY=1;entryX=0.5;entryY=0;" target="D87muBoemHgZMu7HMytx-151" value="&lt;i&gt;создать бронь&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-163" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-148" style="endArrow=classic;html=1;exitX=0.65;exitY=1;entryX=0.5;entryY=0;" target="D87muBoemHgZMu7HMytx-152" value="&lt;i&gt;забронировать бокс&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-164" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-148" style="endArrow=classic;html=1;exitX=0.9;exitY=1;entryX=0.5;entryY=0;" target="D87muBoemHgZMu7HMytx-153" value="&lt;i&gt;запись к ветеринару&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-165" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-151" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-150" value="&lt;i&gt;проверить статус и цену&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-166" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-151" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-154" value="&lt;i&gt;создать&amp;nbsp;&lt;/i&gt;счёт">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-167" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-152" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-154" value="&lt;i&gt;создать счет&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-168" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-154" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-157" value="HTTPS: Списание средств">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-169" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-156" style="endArrow=classic;html=1;" target="D87muBoemHgZMu7HMytx-158" value="HTTP: Отправка уведомления">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-170" edge="1" parent="1" style="endArrow=open;dashed=1;html=1;exitX=0.3;exitY=1;" target="D87muBoemHgZMu7HMytx-155" value="Топик: payment-events&lt;br&gt;&lt;i&gt;(completed / failed)&lt;/i&gt;">
+          <mxGeometry relative="1" x="0.0756" y="-3" as="geometry">
+            <mxPoint as="offset" />
+            <mxPoint x="2172" y="1650" as="sourcePoint" />
+            <mxPoint x="2110" y="1930" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-171" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-155" style="endArrow=open;dashed=1;html=1;exitX=0.3;exitY=0;entryX=0.3;entryY=1;" target="D87muBoemHgZMu7HMytx-151" value="Подписка: payment-events">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1870" y="1870" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-172" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-155" style="endArrow=open;dashed=1;html=1;exitX=0.623;exitY=-0.043;entryX=0.5;entryY=1;exitDx=0;exitDy=0;exitPerimeter=0;" target="D87muBoemHgZMu7HMytx-152" value="Подписка: payment-events">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2470" y="1830" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-173" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-151" style="endArrow=open;dashed=1;html=1;exitX=0.7;exitY=1;entryX=0.364;entryY=0;entryDx=0;entryDy=0;entryPerimeter=0;" target="D87muBoemHgZMu7HMytx-155" value="Топик: sales-events&lt;br&gt;&lt;i&gt;(puppy.reserved)&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="1900" y="1800" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-174" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-152" style="endArrow=open;dashed=1;html=1;exitX=0.7;exitY=1;entryX=0.8;entryY=0;" target="D87muBoemHgZMu7HMytx-155" value="Топик: hotel-events&lt;br&gt;&lt;i&gt;(booking.confirmed)&lt;/i&gt;">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="2470" y="1900" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="D87muBoemHgZMu7HMytx-175" edge="1" parent="1" source="D87muBoemHgZMu7HMytx-155" style="endArrow=open;dashed=1;html=1;" target="D87muBoemHgZMu7HMytx-156" value="Подписка: sales-events, hotel-events">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
