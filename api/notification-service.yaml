@@ -1,0 +1,109 @@
+openapi: 3.1.0
+info:
+  title: notification-service
+  version: 1.0.0
+  description: |
+    Отправка SMS и Email клиентам. Подписан на события
+    sales-events, hotel-events, payment-events.
+
+servers:
+  - url: /api/v1
+  - url: /internal/v1
+
+tags:
+  - name: public
+  - name: internal
+
+paths:
+  /notifications:
+    get:
+      tags: [public]
+      summary: История отправленных уведомлений клиента
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Страница уведомлений
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notification' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+
+  /internal/notifications/send:
+    post:
+      tags: [internal]
+      summary: Отправить уведомление (вызывается через Kafka-подписчика, но есть и sync-вариант)
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SendNotificationRequest' }
+            example:
+              channel: SMS
+              recipient: "+79001234567"
+              templateCode: PUPPY_RESERVED
+              params:
+                puppyBreed: "Корги"
+                reservationId: "res-112233"
+      responses:
+        '202':
+          description: Уведомление принято в очередь на отправку
+        '400':
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    SendNotificationRequest:
+      type: object
+      required: [channel, recipient, templateCode]
+      properties:
+        channel: { type: string, enum: [SMS, EMAIL] }
+        recipient: { type: string }
+        templateCode: { type: string, example: "PUPPY_RESERVED" }
+        params:
+          type: object
+          additionalProperties: { type: string }
+
+    Notification:
+      type: object
+      required: [id, channel, status]
+      properties:
+        id: { type: string, format: uuid }
+        channel: { type: string, enum: [SMS, EMAIL] }
+        recipient: { type: string }
+        templateCode: { type: string }
+        status: { type: string, enum: [PENDING, SENT, DELIVERED, FAILED] }
+        createdAt: { type: string, format: date-time }
+        sentAt: { type: string, format: date-time }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
