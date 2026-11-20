@@ -1,0 +1,214 @@
+openapi: 3.1.0
+info:
+  title: hotel-service
+  version: 1.0.0
+  description: |
+    Бронирование боксов для передержки собак. Проверяет доступность
+    боксов на период дат и управляет жизненным циклом заезда.
+
+servers:
+  - url: /api/v1
+  - url: /internal/v1
+
+tags:
+  - name: public
+  - name: internal
+
+paths:
+  /hotel-bookings:
+    post:
+      tags: [public]
+      summary: Забронировать бокс на период
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateHotelBookingRequest' }
+            example:
+              dogName: "Рекс"
+              boxType: STANDARD
+              checkInDate: "2026-12-01"
+              checkOutDate: "2026-12-10"
+              ration: PREMIUM
+      responses:
+        '201':
+          description: Бронь создана, ожидает оплаты
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HotelBooking' }
+        '409':
+          description: Нет свободных боксов на выбранные даты
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+    get:
+      tags: [public]
+      summary: Список броней клиента
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: string, format: uuid }
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+      responses:
+        '200':
+          description: Страница броней
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  content:
+                    type: array
+                    items: { $ref: '#/components/schemas/HotelBooking' }
+                  page: { type: integer }
+                  size: { type: integer }
+                  totalElements: { type: integer }
+
+  /boxes/availability:
+    get:
+      tags: [public]
+      summary: Проверить доступность боксов на даты
+      parameters:
+        - name: boxType
+          in: query
+          required: true
+          schema: { type: string, enum: [STANDARD, PREMIUM, VIP] }
+        - name: checkInDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+        - name: checkOutDate
+          in: query
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Список свободных боксов
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    boxId: { type: string, format: uuid }
+                    boxType: { type: string }
+                    pricePerDay: { type: number, format: double }
+
+  /internal/hotel-bookings/{id}/status:
+    patch:
+      tags: [internal]
+      summary: Обновить статус брони по событию оплаты
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status, eventId]
+              properties:
+                status: { type: string, enum: [CONFIRMED, CANCELLED, EXPIRED] }
+                eventId: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Статус обновлён
+        '404':
+          description: Не найдена
+          content:
+            application/problem+json:
+              schema: { $ref: '#/components/schemas/Problem' }
+
+components:
+  schemas:
+    CreateHotelBookingRequest:
+      type: object
+      required: [dogName, boxType, checkInDate, checkOutDate]
+      properties:
+        dogName: { type: string, maxLength: 50 }
+        boxType: { type: string, enum: [STANDARD, PREMIUM, VIP] }
+        checkInDate: { type: string, format: date }
+        checkOutDate: { type: string, format: date }
+        ration: { type: string, enum: [STANDARD, PREMIUM], default: STANDARD }
+
+    HotelBooking:
+      type: object
+      required: [id, status, expiresAt]
+      properties:
+        id: { type: string, format: uuid }
+        dogName: { type: string }
+        boxId: { type: string, format: uuid }
+        boxType: { type: string }
+        checkInDate: { type: string, format: date }
+        checkOutDate: { type: string, format: date }
+        totalAmount: { type: number, format: double }
+        status:
+          type: string
+          enum: [PENDING_PAYMENT, CONFIRMED, CANCELLED, EXPIRED]
+        paymentUrl: { type: string, format: uri }
+        expiresAt: { type: string, format: date-time }
+
+    Problem:
+      type: object
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    # === События ===
+    BookingConfirmedEvent:
+      description: |
+        **Топик:** `hotel-events`
+        **Издатель:** hotel-service
+        **Подписчики:** notification-service
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [booking.confirmed] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          properties:
+            bookingId: { type: string, format: uuid }
+            clientId: { type: string, format: uuid }
+            dogName: { type: string }
+            checkInDate: { type: string, format: date }
+            checkOutDate: { type: string, format: date }
+            boxType: { type: string }
+
+    BookingExpiredEvent:
+      description: |
+        **Топик:** `hotel-events`
+        **Издатель:** hotel-service
+        **Подписчики:** notification-service
+      type: object
+      required: [eventId, eventType, schemaVersion, occurredAt, payload]
+      properties:
+        eventId: { type: string, format: uuid }
+        eventType: { type: string, enum: [booking.expired] }
+        schemaVersion: { type: integer, example: 1 }
+        occurredAt: { type: string, format: date-time }
+        payload:
+          type: object
+          properties:
+            bookingId: { type: string, format: uuid }
+            clientId: { type: string, format: uuid }
