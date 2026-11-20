@@ -5,18 +5,29 @@ info:
   description: |
     Расписание ветеринаров и грумеров, запись на процедуры.
     Работает со слотами времени.
+  license:
+    name: Proprietary
+    url: https://example.com/license
 
 servers:
   - url: /api/v1
+    description: Публичный API (через Gateway)
   - url: /internal/v1
+    description: Внутренний API (межсервисный)
+
+security:
+  - BearerAuth: []
 
 tags:
   - name: public
+    description: Эндпоинты для клиента
   - name: internal
+    description: Эндпоинты для других сервисов
 
 paths:
   /appointments:
     post:
+      operationId: createAppointment
       tags: [public]
       summary: Записаться на процедуру
       parameters:
@@ -28,25 +39,31 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateAppointmentRequest' }
+            schema: { $ref: "#/components/schemas/CreateAppointmentRequest" }
             example:
               serviceType: GROOMING
-              masterId: "master-001"
+              masterId: "123e4567-e89b-12d3-a456-426614174001"
               scheduledAt: "2026-11-25T14:00:00Z"
               dogName: "Рекс"
       responses:
-        '201':
+        "201":
           description: Запись создана
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Appointment' }
-        '409':
+              schema: { $ref: "#/components/schemas/Appointment" }
+        "400":
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
           description: Слот уже занят
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
     get:
+      operationId: getAppointments
       tags: [public]
       summary: Список записей клиента
       parameters:
@@ -61,7 +78,7 @@ paths:
           in: query
           schema: { type: integer, default: 20 }
       responses:
-        '200':
+        "200":
           description: Страница записей
           content:
             application/json:
@@ -70,13 +87,19 @@ paths:
                 properties:
                   content:
                     type: array
-                    items: { $ref: '#/components/schemas/Appointment' }
+                    items: { $ref: "#/components/schemas/Appointment" }
                   page: { type: integer }
                   size: { type: integer }
                   totalElements: { type: integer }
+        "400":
+          description: Некорректные параметры
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /masters/{masterId}/slots:
     get:
+      operationId: getMasterSlots
       tags: [public]
       summary: Свободные слоты мастера на дату
       parameters:
@@ -89,7 +112,7 @@ paths:
           required: true
           schema: { type: string, format: date }
       responses:
-        '200':
+        "200":
           description: Список свободных слотов
           content:
             application/json:
@@ -101,9 +124,15 @@ paths:
               example:
                 - "2026-11-25T10:00:00Z"
                 - "2026-11-25T11:00:00Z"
+        "400":
+          description: Некорректные параметры
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/appointments/{id}/status:
     patch:
+      operationId: patchAppointmentStatus
       tags: [internal]
       summary: Обновить статус записи
       parameters:
@@ -119,23 +148,31 @@ paths:
               type: object
               required: [status]
               properties:
-                status: { type: string, enum: [CONFIRMED, CANCELLED, COMPLETED] }
+                status:
+                  { type: string, enum: [CONFIRMED, CANCELLED, COMPLETED] }
       responses:
-        '200':
+        "200":
           description: Статус обновлён
-        '404':
+        "404":
           description: Не найдена
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     CreateAppointmentRequest:
       type: object
       required: [serviceType, masterId, scheduledAt, dogName]
       properties:
-        serviceType: { type: string, enum: [GROOMING, VACCINATION, CHECKUP, SURGERY] }
+        serviceType:
+          { type: string, enum: [GROOMING, VACCINATION, CHECKUP, SURGERY] }
         masterId: { type: string, format: uuid }
         scheduledAt: { type: string, format: date-time }
         dogName: { type: string }
@@ -151,7 +188,8 @@ components:
         masterName: { type: string }
         scheduledAt: { type: string, format: date-time }
         dogName: { type: string }
-        status: { type: string, enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED] }
+        status:
+          { type: string, enum: [PENDING, CONFIRMED, CANCELLED, COMPLETED] }
         price: { type: number, format: double }
 
     Problem:

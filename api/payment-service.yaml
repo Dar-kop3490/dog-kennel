@@ -5,18 +5,27 @@ info:
   description: |
     Создание инвойсов, приём результатов от платёжного шлюза, возвраты.
     Публикует события payment.completed и payment.failed.
+  license:
+    name: Proprietary
+    url: https://example.com/license
 
 servers:
   - url: /api/v1
   - url: /internal/v1
 
+security:
+  - BearerAuth: []
+
 tags:
   - name: public
+    description: Эндпоинты для клиента
   - name: internal
+    description: Эндпоинты для других сервисов
 
 paths:
   /payments/{id}:
     get:
+      operationId: getPayment
       tags: [public]
       summary: Статус платежа
       parameters:
@@ -25,19 +34,20 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '200':
+        "200":
           description: Платёж
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Payment' }
-        '404':
+              schema: { $ref: "#/components/schemas/Payment" }
+        "404":
           description: Не найден
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/payments:
     post:
+      operationId: createPayment
       tags: [internal]
       summary: Создать инвойс (вызывается sales/hotel/clinic)
       parameters:
@@ -49,32 +59,33 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreatePaymentRequest' }
+            schema: { $ref: "#/components/schemas/CreatePaymentRequest" }
             example:
               amount: 50000.00
               currency: RUB
-              description: "Бронь щенка #a1b2"
+              description: "Бронь щенка #123e4567"
               callbackUrl: "https://sales.internal/callbacks/payment"
       responses:
-        '201':
+        "201":
           description: Инвойс создан
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Payment' }
+              schema: { $ref: "#/components/schemas/Payment" }
               example:
-                id: "pay-998877"
+                id: "123e4567-e89b-12d3-a456-426614174003"
                 status: PENDING
                 amount: 50000.00
                 currency: RUB
                 paymentUrl: "https://pay.example.com/checkout/abc"
-        '400':
+        "400":
           description: Некорректный запрос
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/payments/{id}/refund:
     post:
+      operationId: refundPayment
       tags: [internal]
       summary: Инициировать возврат (команда от sales/hotel)
       parameters:
@@ -92,15 +103,21 @@ paths:
               properties:
                 reason: { type: string, example: "Бронь истекла" }
       responses:
-        '202':
+        "202":
           description: Возврат принят в обработку
-        '404':
+        "404":
           description: Платёж не найден
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     CreatePaymentRequest:
       type: object
@@ -133,7 +150,6 @@ components:
         status: { type: integer }
         detail: { type: string }
 
-    # === События ===
     PaymentCompletedEvent:
       description: |
         **Топик:** `payment-events`

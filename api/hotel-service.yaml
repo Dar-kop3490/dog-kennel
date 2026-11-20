@@ -5,18 +5,27 @@ info:
   description: |
     Бронирование боксов для передержки собак. Проверяет доступность
     боксов на период дат и управляет жизненным циклом заезда.
+  license:
+    name: Proprietary
+    url: https://example.com/license
 
 servers:
   - url: /api/v1
   - url: /internal/v1
 
+security:
+  - BearerAuth: []
+
 tags:
   - name: public
+    description: Эндпоинты для клиента
   - name: internal
+    description: Эндпоинты для других сервисов
 
 paths:
   /hotel-bookings:
     post:
+      operationId: createHotelBooking
       tags: [public]
       summary: Забронировать бокс на период
       parameters:
@@ -28,7 +37,7 @@ paths:
         required: true
         content:
           application/json:
-            schema: { $ref: '#/components/schemas/CreateHotelBookingRequest' }
+            schema: { $ref: "#/components/schemas/CreateHotelBookingRequest" }
             example:
               dogName: "Рекс"
               boxType: STANDARD
@@ -36,18 +45,24 @@ paths:
               checkOutDate: "2026-12-10"
               ration: PREMIUM
       responses:
-        '201':
+        "201":
           description: Бронь создана, ожидает оплаты
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/HotelBooking' }
-        '409':
+              schema: { $ref: "#/components/schemas/HotelBooking" }
+        "400":
+          description: Некорректный запрос
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
           description: Нет свободных боксов на выбранные даты
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
     get:
+      operationId: getHotelBookings
       tags: [public]
       summary: Список броней клиента
       parameters:
@@ -62,7 +77,7 @@ paths:
           in: query
           schema: { type: integer, default: 20 }
       responses:
-        '200':
+        "200":
           description: Страница броней
           content:
             application/json:
@@ -71,13 +86,19 @@ paths:
                 properties:
                   content:
                     type: array
-                    items: { $ref: '#/components/schemas/HotelBooking' }
+                    items: { $ref: "#/components/schemas/HotelBooking" }
                   page: { type: integer }
                   size: { type: integer }
                   totalElements: { type: integer }
+        "400":
+          description: Некорректные параметры
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /boxes/availability:
     get:
+      operationId: getBoxAvailability
       tags: [public]
       summary: Проверить доступность боксов на даты
       parameters:
@@ -94,7 +115,7 @@ paths:
           required: true
           schema: { type: string, format: date }
       responses:
-        '200':
+        "200":
           description: Список свободных боксов
           content:
             application/json:
@@ -106,9 +127,15 @@ paths:
                     boxId: { type: string, format: uuid }
                     boxType: { type: string }
                     pricePerDay: { type: number, format: double }
+        "400":
+          description: Некорректные параметры
+          content:
+            application/problem+json:
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/hotel-bookings/{id}/status:
     patch:
+      operationId: patchHotelBookingStatus
       tags: [internal]
       summary: Обновить статус брони по событию оплаты
       parameters:
@@ -127,15 +154,21 @@ paths:
                 status: { type: string, enum: [CONFIRMED, CANCELLED, EXPIRED] }
                 eventId: { type: string, format: uuid }
       responses:
-        '200':
+        "200":
           description: Статус обновлён
-        '404':
+        "404":
           description: Не найдена
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     CreateHotelBookingRequest:
       type: object
@@ -172,7 +205,6 @@ components:
         status: { type: integer }
         detail: { type: string }
 
-    # === События ===
     BookingConfirmedEvent:
       description: |
         **Топик:** `hotel-events`

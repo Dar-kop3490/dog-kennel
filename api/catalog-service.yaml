@@ -5,13 +5,18 @@ info:
   description: |
     Управление породами, помётами и профилями щенков.
     Основной источник истины для каталога.
-    Читается в 100 раз чаще, чем оформляются продажи.
+  license:
+    name: Proprietary
+    url: https://example.com/license
 
 servers:
   - url: /api/v1
     description: Публичный API (через Gateway)
   - url: /internal/v1
     description: Внутренний API (межсервисный)
+
+security:
+  - BearerAuth: []
 
 tags:
   - name: public
@@ -22,6 +27,7 @@ tags:
 paths:
   /puppies:
     get:
+      operationId: getPuppies
       tags: [public]
       summary: Список доступных щенков с фильтрацией
       parameters:
@@ -40,31 +46,32 @@ paths:
           required: false
           schema: { type: integer, minimum: 1, maximum: 100, default: 20 }
       responses:
-        '200':
+        "200":
           description: Страница щенков
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PuppyPage' }
+              schema: { $ref: "#/components/schemas/PuppyPage" }
               example:
                 content:
-                  - id: "a1b2c3d4-e5f6-7890-g1h2-i3j4k5l6m7n8"
+                  - id: "123e4567-e89b-12d3-a456-426614174000"
                     breed: "Корги"
-                    litterId: "lit-001"
+                    litterId: "987fcdeb-51a2-43d1-b678-901234567890"
                     status: AVAILABLE
                     price: 50000
-                    photoUrl: "https://minio.example.com/puppies/a1b2.jpg"
+                    photoUrl: "https://minio.example.com/puppies/123e.jpg"
                 page: 0
                 size: 20
                 totalElements: 42
                 totalPages: 3
-        '400':
+        "400":
           description: Некорректные параметры
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /puppies/{id}:
     get:
+      operationId: getPuppyById
       tags: [public]
       summary: Карточка щенка
       parameters:
@@ -73,19 +80,20 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '200':
+        "200":
           description: Щенок найден
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/Puppy' }
-        '404':
+              schema: { $ref: "#/components/schemas/Puppy" }
+        "404":
           description: Щенок не найден
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/puppies/{id}:
     get:
+      operationId: getInternalPuppyById
       tags: [internal]
       summary: Получить щенка для проверки статуса и цены (для sales-service)
       parameters:
@@ -94,19 +102,20 @@ paths:
           required: true
           schema: { type: string, format: uuid }
       responses:
-        '200':
+        "200":
           description: Щенок
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/PuppyInternal' }
-        '404':
+              schema: { $ref: "#/components/schemas/PuppyInternal" }
+        "404":
           description: Не найден
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
   /internal/puppies/{id}/status:
     patch:
+      operationId: patchInternalPuppyStatus
       tags: [internal]
       summary: Обновить статус щенка (AVAILABLE / RESERVED / SOLD)
       parameters:
@@ -126,20 +135,26 @@ paths:
             example:
               status: SOLD
       responses:
-        '200':
+        "200":
           description: Статус обновлён
-        '404':
+        "404":
           description: Не найден
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
-        '409':
+              schema: { $ref: "#/components/schemas/Problem" }
+        "409":
           description: Недопустимый переход статуса
           content:
             application/problem+json:
-              schema: { $ref: '#/components/schemas/Problem' }
+              schema: { $ref: "#/components/schemas/Problem" }
 
 components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     Puppy:
       type: object
@@ -167,7 +182,7 @@ components:
       properties:
         content:
           type: array
-          items: { $ref: '#/components/schemas/Puppy' }
+          items: { $ref: "#/components/schemas/Puppy" }
         page: { type: integer }
         size: { type: integer }
         totalElements: { type: integer }
@@ -176,7 +191,12 @@ components:
     Problem:
       type: object
       properties:
-        type: { type: string, format: uri, example: "https://example.com/errors/not-found" }
+        type:
+          {
+            type: string,
+            format: uri,
+            example: "https://example.com/errors/not-found",
+          }
         title: { type: string, example: "Not Found" }
         status: { type: integer, example: 404 }
         detail: { type: string, example: "Puppy not found" }
